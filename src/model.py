@@ -149,3 +149,45 @@ class FeedForward(nn.Module):
         x = self.linear2(self.dropout(x))
         return x
     
+    
+class EncoderLayer(nn.Module):
+    """
+    Implements the Encoder layer of the Transformer
+    """
+    
+    def __init__(self, d_model: int, num_heads: int, d_ff: int, dropout: float=0.1) -> None:
+        """
+        Initializes the Transformer encoder layer.
+
+        Args:
+            d_model: Dimension of the input and output embeddings.
+            num_heads: Number of attention heads.
+            d_ff: Expansion factor for the feed-forward network.
+            dropout: Dropout probability applied after each sublayer.
+            
+        Returns: 
+            None
+        """
+        super().__init__()
+        self.attention = MultiHeadAttention(d_model, num_heads, dropout)
+        self.ffn = FeedForward(d_model, d_ff, dropout)
+        self.ln1 = nn.LayerNorm(d_model)
+        self.ln2 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(dropout)
+        
+    def forward(self, x: Tensor, mask = None) -> Tensor:
+        """
+        Applies forward pass of Encoder Layer
+        
+        Args:
+            x: Input tensor of shape (batch_size, seq_len, d_model).
+            mask: Optional attention mask.
+            
+        Returns:
+            output tensor of shape (batch_size, seq_len, d_model).
+        """
+        attn_output = self.attention(x, x, x, mask)
+        output = self.ln1(x + self.dropout(attn_output))
+        ffn_output = self.ffn(output)
+        output = self.ln2(output + self.dropout(ffn_output))
+        return output
