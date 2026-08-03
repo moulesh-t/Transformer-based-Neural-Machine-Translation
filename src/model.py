@@ -110,3 +110,42 @@ class MultiHeadAttention(nn.Module):
         output = output.transpose(1, 2).contiguous().reshape(output.shape[0], output.shape[1], -1)
         output = self.W_o(output) # (batch_size, max_len, d_model)
         return output
+
+
+class FeedForward(nn.Module):
+    """
+    Implements the feed forward neural network of AI Model
+    """
+    
+    def __init__(self, d_model: int, d_ff: int, dropout: float = 0.1) -> None:
+        """
+        Initializes the feed forward network.
+
+        Args:
+            d_model: Embedding Dimension.
+            d_ff: Expansion factor for the hidden layer.
+            dropout: The dropout rate.
+            
+        Returns:
+            None
+        """
+        super().__init__()
+        self.linear1 = nn.Linear(d_model, d_ff)
+        self.linear2 = nn.Linear(d_ff, d_model)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(dropout)
+        
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Applies the feed-forward network to the input tensor.
+
+        Args:
+            x: Input tensor of shape (batch_size, seq_len, d_model).
+
+        Returns:
+            output (tensor): the output tensor of shape (batch_size, max_len, d_model)
+        """
+        x = self.relu(self.linear1(x))
+        x = self.linear2(self.dropout(x))
+        return x
+    
