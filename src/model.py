@@ -30,7 +30,7 @@ class PositionalEncoding(torch.nn.Module):
         
         self.register_buffer("pe", pe)
         
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> Tensor:
         """
         Implements the positional encodings on input data tensor
         
@@ -43,3 +43,70 @@ class PositionalEncoding(torch.nn.Module):
         x = x + self.pe[:, :x.size(1), :] # type: ignore
         x = self.dropout(x)
         return x
+    
+    
+class MultiHeadAttention(nn.Module):
+    """
+    Implements the multi-head attention mechanism.
+    """
+
+    def __init__(self, d_model :int, num_heads :int, dropout :float = 0.1) -> None:
+        """
+        Initializes the Multi-Head Attention class for computing attention scores.
+        
+        Args:
+            d_model (int): The dimension of input embeddings.
+            num_heads (int): The number of heads used for attention.
+            dropout (float): The dropout rate.
+            
+        Returns:
+            None
+        """
+        super().__init__()
+        assert d_model % num_heads == 0, "Embedding Dimension must be divisble by number of heads"
+        self.dropout = nn.Dropout(dropout)
+        self.d_k = d_model // num_heads
+        self.num_heads = num_heads
+        self.W_q = nn.Linear(d_model, d_model)
+        self.W_k = nn.Linear(d_model, d_model)
+        self.W_v = nn.Linear(d_model, d_model)
+        self.W_o = nn.Linear(d_model, d_model)
+    
+    def scaled_dot_product_attention(self, Q, K, V, mask = None) -> Tensor:
+        """
+        Implements the scaled dot product attention mechanism.
+        Args:
+            Q (tensor): Query vector of shape (batch_size, seq_len, num_heads, n_k)
+            K (tensor): Query vector of shape (batch_size, seq_len, num_heads, n_k)
+            v (tensor): Query vector of shape (batch_size, seq_len, num_heads, n_k)
+            mask (tensor or None): Masking Tensor (Default is None)
+        
+        Returns:
+            attn_scores (tensor): The attention scores of shape (batch_size, seq_len, num_heads, n_k)
+        """
+        scores = (Q @ K.transpose(-2, -1)) / (self.d_k ** 0.5)
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+        attn_weights = torch.softmax(scores, dim=-1)
+        return self.dropout(attn_weights) @ V
+    
+    def forward(self, Q: Tensor, K: Tensor, V: Tensor, mask = None) -> Tensor:
+        """
+        Implements the complete forward pass of Attention Mechanism
+        
+        Args:
+            Q (tensor): Query vector of shape (batch_size, max_len, d_model)
+            K (tensor): Query vector of shape (batch_size, max_len, d_model)
+            V (tensor): Query vector of shape (batch_size, max_len, d_model)
+            mask (tensor or None): Masking Tensor (Default is None)
+        
+        Returns:
+            output (tensor): the output tensor of shape (batch_size, max_len, d_model)
+        """
+        Q = self.W_q(Q).reshape(Q.shape[0], Q.shape[1], self.num_heads, self.d_k).transpose(1, 2) # (batch_size, num_heads, max_len, n_k)
+        K = self.W_k(K).reshape(K.shape[0], K.shape[1], self.num_heads, self.d_k).transpose(1, 2) # (batch_size, num_heads, max_len, n_k)
+        V = self.W_v(V).reshape(V.shape[0], V.shape[1], self.num_heads, self.d_k).transpose(1, 2) # (batch_size, num_heads, max_len, n_k)
+        output = self.scaled_dot_product_attention(Q, K, V, mask)
+        output = output.transpose(1, 2).contiguous().reshape(output.shape[0], output.shape[1], -1)
+        output = self.W_o(output) # (batch_size, max_len, d_model)
+        return output
