@@ -1,5 +1,3 @@
-from typing import Any
-
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -326,3 +324,61 @@ class Decoder(nn.Module):
             x = layer(x, encoder_output, src_mask, tgt_mask)
         return x
         
+        
+class Transformer(nn.Module):
+    """
+    Implements the Transformer network using Encoder and Decoder Stacks.
+    """
+    
+    def __init__(self, src_vocab_size: int, tgt_vocab_size: int, d_model: int=256, num_heads: int=8, num_layers: int=3, d_ff: int=512, max_len: int=50, dropout: float=0.1) -> None:
+        """
+        Initializes the Transformer network.
+        
+        Args:
+            src_vocab_size (int): Size of the source vocabulary.
+            tgt_vocab_size (int): Size of the target vocabulary.
+            d_model (int): Embedding dimensions.
+            num_heads (int): Number of attention heads.
+            num_layers (int): Number of encoder and decoder stacks.
+            d_ff (int): Expansion factor of the hidden feed-forward network.
+            max_len (int): The maximum sequence length of sentence.
+            dropout (float): The dropout rate.
+            
+        Returns: 
+            None
+        """
+        super().__init__()
+        self.src_embed = nn.Embedding(src_vocab_size, d_model)
+        self.tgt_embed = nn.Embedding(tgt_vocab_size, d_model)
+        self.pos_embed = PositionalEncoding(d_model, max_len, dropout)
+        self.encoder = Encoder(num_layers, d_model, num_heads, d_ff, dropout)
+        self.decoder = Decoder(num_layers, d_model, num_heads, d_ff, dropout)
+        self.proj = nn.Linear(d_model, tgt_vocab_size)
+    
+    def forward(self, src: Tensor, tgt: Tensor, src_mask = None, tgt_mask = None) -> Tensor:
+        """
+        Implements the complete forward pass of the Transformer network.
+        
+        Args:
+            src (tensor): Input source tensor of shape (batch_size, max_len).
+            tgt (tensor): Input target tensor of shape (batch_size, max_len).
+            src_mask (tensor): Optional attention mask for source sentences.
+            tgt_mask (tensor): Optional attention mask for target sentences.
+        
+        Returns:
+            Output tensor of shape (batch_size, max_len, tgt_vocab_size).
+        """
+        # Implement Input Embeddings and Positional Encodings for source and target tensors
+        src = self.src_embed(src)
+        src = self.pos_embed(src)
+        tgt = self.tgt_embed(tgt)
+        tgt = self.pos_embed(tgt)
+        
+        # Pass the source tensor to the encoder layers
+        encoder_output = self.encoder(src, src_mask) # (batch_size, max_len, d_model)
+        # Pass the target tensor and encoder_output to the decoder layers
+        decoder_output = self.decoder(tgt, encoder_output, src_mask, tgt_mask) #(batch_size, max_len, d_model)
+        # Pass the decoder output to the final projection layer
+        output = self.proj(decoder_output) # (batch_size, max_len, ttgt_vocab_size)
+        
+        return output
