@@ -191,3 +191,54 @@ class EncoderLayer(nn.Module):
         ffn_output = self.ffn(output)
         output = self.ln2(output + self.dropout(ffn_output))
         return output
+
+
+class DecoderLayer(nn.Module):
+    """
+    Implements the Decoder layer of the Transformer
+    """
+    
+    def __init__(self, d_model: int, num_heads: int, d_ff: int, dropout: float=0.1) -> None:
+        """
+        Initializes the Transformer's Decoder layer.
+        
+        Args:
+            d_model (int): Dimension of the input and output embeddings.
+            num_heads (int): Number of attention heads.
+            d_ff (int): Expansion factor for the feed-forward network.
+            dropout (float): Dropout probability applied after each sublayer.
+                    
+        Returns: 
+            None
+        """
+        super().__init__()
+        self.self_attention = MultiHeadAttention(d_model, num_heads, dropout)
+        self.cross_attention = MultiHeadAttention(d_model, num_heads, dropout)
+        self.ffn = FeedForward(d_model, d_ff, dropout)
+        self.ln1 = nn.LayerNorm(d_model)
+        self.ln2 = nn.LayerNorm(d_model)
+        self.ln3 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(dropout)
+        
+    def forward(self, x: Tensor, encoder_output: Tensor, src_mask=None, tgt_mask=None) -> Tensor:
+        """
+        Implements the forward pass in the Decoder layer
+        
+        Args:
+            x (tensor): Input tensor of shape (batch_size, tgt_seq_len, d_model).
+            encoder_output (tensor): Output of the enocder layer of shape (batch_size, src_seq_len, d_model).
+            src_mask: Optional attention mask for source sentences.
+            tgt_mask: Optional attention mask for target sentences.
+                    
+        Returns:
+            output tensor of shape (batch_size, seq_len, d_model).
+        """
+        self_attn_scores = self.self_attention(x, x, x, tgt_mask)
+        x = self.ln1(x + self.dropout(self_attn_scores))
+        # Encoder - Decoder Cross Attention
+        cross_attn_scores = self.cross_attention(x, encoder_output, encoder_output, src_mask)
+        x = self.ln2(x + self.dropout(cross_attn_scores))
+        ffn_outputs = self.ffn(x)
+        output = self.ln3(x + self.dropout(ffn_outputs))
+        return output
+            
