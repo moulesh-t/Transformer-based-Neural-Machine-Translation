@@ -263,7 +263,7 @@ class Encoder(nn.Module):
             None
         """
         super().__init__()
-        self.encoder = nn.ModuleList([
+        self.layers = nn.ModuleList([
             EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)
         ])
         
@@ -278,7 +278,7 @@ class Encoder(nn.Module):
         Returns:
             encoder output tensor of shape (batch_size, seq_len, d_model).
         """
-        for layer in self.encoder:
+        for layer in self.layers:
             x = layer(x, mask)
         return x
         
@@ -303,7 +303,7 @@ class Decoder(nn.Module):
             None
         """
         super().__init__()
-        self.decoder = nn.ModuleList([
+        self.layers = nn.ModuleList([
             DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)
         ])
         
@@ -320,7 +320,7 @@ class Decoder(nn.Module):
         Returns:
             output tensor of shape (batch_size, seq_len, d_model).
         """
-        for layer in self.decoder:
+        for layer in self.layers:
             x = layer(x, encoder_output, src_mask, tgt_mask)
         return x
         
