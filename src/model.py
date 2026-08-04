@@ -1,3 +1,5 @@
+from typing import Any
+
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -242,3 +244,85 @@ class DecoderLayer(nn.Module):
         output = self.ln3(x + self.dropout(ffn_outputs))
         return output
             
+            
+class Encoder(nn.Module):
+    """
+    Implements the Transformer Encoder using multiple EncoderLayer modules.
+    """
+    
+    def __init__(self, num_layers: int, d_model: int, num_heads: int, d_ff: int, dropout: float=0.1) -> None:
+        """
+        Initializes the Encoder stack with mutiple EncoderLayer modules.
+        
+        Args:
+            num_layers (int): Number of EncoderLayer modules.
+            d_model (int): Dimension of the input and output embeddings.
+            num_heads (int): Number of attention heads.
+            d_ff (int): Expansion factor for the feed-forward network.
+            dropout (float): Dropout probability applied after each sublayer.
+            
+        Returns: 
+            None
+        """
+        super().__init__()
+        self.encoder = nn.ModuleList([
+            EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)
+        ])
+        
+    def forward(self, x: Tensor, mask = None) -> Tensor:
+        """
+        Implements the forward pass mechanism of the Encoder stack.
+        
+        Args:
+            x (tensor): Input tensor of shape (batch_size, seq_len, d_model).
+            mask (tensor): Optional attention mask.
+                    
+        Returns:
+            encoder output tensor of shape (batch_size, seq_len, d_model).
+        """
+        for layer in self.encoder:
+            x = layer(x, mask)
+        return x
+        
+        
+class Decoder(nn.Module):
+    """
+    Implements the Transformer Decoder using multiple DecoderLayer modules.
+    """
+    
+    def __init__(self, num_layers: int, d_model: int, num_heads: int, d_ff: int, dropout: float=0.1) -> None:
+        """
+        Initializes the Encoder stack with mutiple EncoderLayer modules.
+                
+        Args:
+            num_layers (int): Number of DecoderLayer modules.
+            d_model (int): Dimension of the input and output embeddings.
+            num_heads (int): Number of attention heads.
+            d_ff (int): Expansion factor for the feed-forward network.
+            dropout (float): Dropout probability applied after each sublayer.
+                    
+        Returns: 
+            None
+        """
+        super().__init__()
+        self.decoder = nn.ModuleList([
+            DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)
+        ])
+        
+    def forward(self, x: Tensor, encoder_output: Tensor, src_mask = None, tgt_mask = None) -> Tensor:
+        """
+        Implements the forward pass of the Decoder stack.
+        
+        Args:
+            x (tensor): Input tensor of shape (batch_size, seq_len, d_model).
+            encoder_output (tensor): Input tensor of shape (batch_size, seq_len, d_model).
+            src_mask (tensor): Optional attention mask for source tensors.
+            tgt_mask (tensor): Optional attention mask for target tensors.
+            
+        Returns:
+            output tensor of shape (batch_size, seq_len, d_model).
+        """
+        for layer in self.decoder:
+            x = layer(x, encoder_output, src_mask, tgt_mask)
+        return x
+        
