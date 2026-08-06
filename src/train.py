@@ -5,6 +5,7 @@ from model import Transformer
 from optimizer import AdamW
 from scheduler import WarmupCosineScheduler
 import logging
+import wandb
 
 logging.basicConfig(
     filename='training.log',
@@ -29,6 +30,10 @@ def train(model: Transformer, dataloader: DataLoader, optimizer: AdamW, schedule
     model.to(device)
     model.train()
     loss_function = nn.CrossEntropyLoss(ignore_index=0)
+    wandb.init(project='AI_Translator', config={
+        'epochs': epochs,
+        'batch_size': dataloader.batch_size,
+    })
     for epoch in range(epochs):
         total_loss = 0
         for step, (src, tgt) in enumerate(dataloader):
@@ -49,12 +54,15 @@ def train(model: Transformer, dataloader: DataLoader, optimizer: AdamW, schedule
             scheduler.step()
             if step % 100 == 0:
                 msg = f"Epoch {epoch+1}/{epochs} | Step {step}/{len(dataloader)} | Loss: {loss.item():.4f} | LR: {scheduler.get_lr():.6f}"
+                wandb.log({"step_loss": loss.item(), "lr": scheduler.get_lr()})
                 print(msg)
                 logging.info(msg)
         if (epoch+1) % 2 == 0:
-            save_checkpoint(model, optimizer, epoch+1, total_loss, f'./models/{epoch+1}.pt')
+            save_checkpoint(model, optimizer, epoch+1, total_loss/len(dataloader), f'./models/{epoch+1}.pt')
         msg = f"Epoch {epoch+1}/{epochs}: Loss: {total_loss/len(dataloader):.4f}"
+        wandb.log({"epoch_loss": total_loss/len(dataloader), "epoch": epoch+1})
         print(msg)
         logging.info(msg)
+        
     torch.save(model.state_dict(), './models/final_model.pt')
     
