@@ -5,6 +5,16 @@ from model import Transformer
 from optimizer import AdamW
 from scheduler import WarmupCosineScheduler
 
+
+def save_checkpoint(model: Transformer, optimizer: AdamW, epoch: int, loss: float, path: str) -> None:
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss,
+    }, path)
+
+
 def train(model: Transformer, dataloader: DataLoader, optimizer: AdamW, scheduler:  WarmupCosineScheduler, device: torch.device, epochs: int) -> None:
     """
     Implement Training of Transformer Model.
@@ -14,7 +24,7 @@ def train(model: Transformer, dataloader: DataLoader, optimizer: AdamW, schedule
     loss_function = nn.CrossEntropyLoss(ignore_index=0)
     for epoch in range(epochs):
         total_loss = 0
-        for src, tgt in dataloader:
+        for step, (src, tgt) in enumerate(dataloader):
             src = src.to(device)
             tgt = tgt.to(device)
             src_mask = (src != 0).unsqueeze(1).unsqueeze(2).to(device)
@@ -30,5 +40,9 @@ def train(model: Transformer, dataloader: DataLoader, optimizer: AdamW, schedule
             loss.backward()
             optimizer.step()
             scheduler.step()
+            if step % 100 == 0:
+                print(f"Epoch {epoch+1}/{epochs} | Step {step}/{len(dataloader)} | Loss: {loss.item():.4f} | LR: {scheduler.get_lr():.6f}")
+        if (epoch+1) % 2 == 0:
+            save_checkpoint(model, optimizer, epoch+1, total_loss, f'./models/{epoch+1}.pt')
         print(f"Epoch {epoch+1}/{epochs}: Loss: {total_loss/len(dataloader):.4f}")
     
