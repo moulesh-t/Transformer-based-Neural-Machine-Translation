@@ -107,7 +107,9 @@ class MultiHeadAttention(nn.Module):
         K = self.W_k(K).reshape(K.shape[0], K.shape[1], self.num_heads, self.d_k).transpose(1, 2) # (batch_size, num_heads, max_len, n_k)
         V = self.W_v(V).reshape(V.shape[0], V.shape[1], self.num_heads, self.d_k).transpose(1, 2) # (batch_size, num_heads, max_len, n_k)
         output = self.scaled_dot_product_attention(Q, K, V, mask)
-        output = output.transpose(1, 2).contiguous().reshape(output.shape[0], output.shape[1], -1)
+        output = output.transpose(1, 2).contiguous()
+        batch, seq_len, _, _ = output.shape
+        output = output.reshape(batch, seq_len, -1)
         output = self.W_o(output) # (batch_size, max_len, d_model)
         return output
 
