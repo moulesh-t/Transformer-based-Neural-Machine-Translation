@@ -4,6 +4,13 @@ from torch.utils.data import DataLoader
 from model import Transformer
 from optimizer import AdamW
 from scheduler import WarmupCosineScheduler
+import logging
+
+logging.basicConfig(
+    filename='training.log',
+    level = logging.INFO,
+    format= '%(asctime)s - %(message)s'
+)
 
 
 def save_checkpoint(model: Transformer, optimizer: AdamW, epoch: int, loss: float, path: str) -> None:
@@ -41,8 +48,13 @@ def train(model: Transformer, dataloader: DataLoader, optimizer: AdamW, schedule
             optimizer.step()
             scheduler.step()
             if step % 100 == 0:
-                print(f"Epoch {epoch+1}/{epochs} | Step {step}/{len(dataloader)} | Loss: {loss.item():.4f} | LR: {scheduler.get_lr():.6f}")
+                msg = f"Epoch {epoch+1}/{epochs} | Step {step}/{len(dataloader)} | Loss: {loss.item():.4f} | LR: {scheduler.get_lr():.6f}"
+                print(msg)
+                logging.info(msg)
         if (epoch+1) % 2 == 0:
             save_checkpoint(model, optimizer, epoch+1, total_loss, f'./models/{epoch+1}.pt')
-        print(f"Epoch {epoch+1}/{epochs}: Loss: {total_loss/len(dataloader):.4f}")
+        msg = f"Epoch {epoch+1}/{epochs}: Loss: {total_loss/len(dataloader):.4f}"
+        print(msg)
+        logging.info(msg)
+    torch.save(model.state_dict(), './models/final_model.pt')
     
