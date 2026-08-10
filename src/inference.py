@@ -1,19 +1,19 @@
 import torch
 import torch.nn as nn
 from model import Transformer
-from data import Vocabulary
+from data import Tokenizer
 
 
-def translate(model: Transformer, sentence: str, src_vocab: Vocabulary, tgt_vocab: Vocabulary, device: torch.device, max_len: int= 50) -> str:
+def translate(model: Transformer, sentence: str, tokenizer: Tokenizer, device: torch.device, max_len: int= 50) -> str:
     """
     Translate function for inference.
     """
     model.eval()
-    src = torch.LongTensor([src_vocab.encode(sentence)]).to(device)
+    src = torch.LongTensor([tokenizer.encode(sentence)]).to(device)
     src_mask = (src != 0).unsqueeze(1).unsqueeze(2)
     with torch.no_grad():
         encoder_output = model.encoder(model.pos_embed(model.src_embed(src)), src_mask)
-    tgt = [tgt_vocab.word2idx['<sos>']]
+    tgt = [tokenizer.sos_id]
     with torch.no_grad():
         for _ in range(max_len):
             tgt_tokens = torch.LongTensor([tgt]).to(device)
@@ -27,7 +27,7 @@ def translate(model: Transformer, sentence: str, src_vocab: Vocabulary, tgt_voca
             )
             logits = model.proj(decoder_output).to(device)
             next_token = logits[0, -1, :].argmax().item()
-            if next_token == tgt_vocab.word2idx['<eos>']:
+            if next_token == tokenizer.eos_id:
                 break
             tgt.append(next_token)
-    return tgt_vocab.decode(tgt[1:])
+    return tokenizer.decode(tgt[1:])

@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset
+import sentencepiece as spm
 
 class Vocabulary:
     """
@@ -76,28 +77,45 @@ class Vocabulary:
             words.append(word)
         return " ".join(words)
         
-        
+     
+class Tokenizer:
+    def __init__(self, model_path: str) -> None:
+        self.sp = spm.SentencePieceProcessor()
+        self.sp.load(model_path)
+        self.pad_id = self.sp.pad_id()    # 0
+        self.sos_id = self.sp.bos_id()    # 2
+        self.eos_id = self.sp.eos_id()    # 3
+        self.unk_id = self.sp.unk_id()    # 1
+    
+    def encode(self, text: str) -> list[int]:
+        return self.sp.encode(text)
+    
+    def decode(self, ids: list[int]) -> str:
+        return self.sp.decode(ids)
+    
+    def vocab_size(self) -> int:
+        return self.sp.get_piece_size()   
+    
+    
 class TranslationDataset(Dataset):
     """
     Pytorch dataset for the AI Translator Model.
     """
     
-    def __init__(self, pairs: list[tuple[str,str]], src_vocab: Vocabulary, tgt_vocab: Vocabulary, max_len: int=50) -> None:
+    def __init__(self, pairs: list[tuple[str,str]], tokenizer: Tokenizer, max_len: int=50) -> None:
         """
         Initializes the custom TranslationDataset class using torch Dataset class.
         
         Args:
             pairs (list[tuple[str,str]]): List of (english_sentences, german_sentences) tuples.
-            src_vocab (Vocabulary): Vocabulary object of source language.
-            tgt_vocab (Vocabulary): Vocabulary object of target language.
+            tokenizer (Tokenizer): A instance of Tokenizer class used to tokenize text.
             max_len (int): Maximum length of sentence, and defaults to 50 unless specified.
             
         Returns:
             None
         """
         self.pairs = pairs
-        self.src_vocab = src_vocab
-        self.tgt_vocab = tgt_vocab
+        self.tokenizer = tokenizer
         self.max_len = max_len
     
     def __len__(self):
@@ -120,14 +138,14 @@ class TranslationDataset(Dataset):
             tuple[torch.LongTensor, torch.LongTensor]
         """
         src_sentence, tgt_sentence = self.pairs[index]
-        src_ids = self.src_vocab.encode(src_sentence)
-        tgt_ids = [self.tgt_vocab.word2idx['<sos>']] + self.tgt_vocab.encode(tgt_sentence) + [self.tgt_vocab.word2idx['<eos>']]
+        src_ids = self.tokenizer.encode(src_sentence)
+        tgt_ids = [self.tokenizer.sos_id] + self.tokenizer.encode(tgt_sentence) + [self.tokenizer.eos_id]
         if len(src_ids) < self.max_len:
-            src_ids.extend([self.src_vocab.word2idx.get("<pad>", 0)] * (self.max_len - len(src_ids)))
+            src_ids.extend([self.tokenizer.pad_id] * (self.max_len - len(src_ids)))
         else:
             src_ids = src_ids[:self.max_len]
         if len(tgt_ids) < self.max_len:
-            tgt_ids.extend([self.tgt_vocab.word2idx.get("<pad>", 0)] * (self.max_len - len(tgt_ids)))
+            tgt_ids.extend([self.tokenizer.pad_id] * (self.max_len - len(tgt_ids)))
         else:
             tgt_ids = tgt_ids[:self.max_len]
             
