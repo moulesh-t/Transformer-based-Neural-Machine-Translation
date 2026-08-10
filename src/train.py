@@ -27,6 +27,7 @@ def train(model: Transformer, dataloader: DataLoader, optimizer: AdamW, schedule
     """
     Implement Training of Transformer Model.
     """
+    scaler = torch.amp.GradScaler(enabled=device.type=='cuda')
     model.to(device)
     model.train()
     loss_function = nn.CrossEntropyLoss(ignore_index=0)
@@ -45,12 +46,14 @@ def train(model: Transformer, dataloader: DataLoader, optimizer: AdamW, schedule
             tgt_pad_mask = (tgt_input != 0).unsqueeze(1).unsqueeze(2)
             causal_mask = torch.tril(torch.ones(tgt_len, tgt_len, device=device)).bool()
             tgt_mask = (tgt_pad_mask & causal_mask).to(device)
-            optimizer.zero_grad()
-            logits = model(src, tgt_input, src_mask, tgt_mask).transpose(1,2)
-            loss = loss_function(logits, tgt[:, 1:])
+            with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=device.type=='cuda'):
+                logits = model(src, tgt_input, src_mask, tgt_mask).transpose(1,2)
+                loss = loss_function(logits, tgt[:, 1:])
             total_loss += loss.item()
-            loss.backward()
-            optimizer.step()
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad()
             scheduler.step()
             if step % 100 == 0:
                 msg = f"Epoch {epoch+1}/{epochs} | Step {step}/{len(dataloader)} | Loss: {loss.item():.4f} | LR: {scheduler.get_lr():.6f}"
