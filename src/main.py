@@ -36,6 +36,7 @@ model = Transformer(
                 50,
                 0.15
                 )
+model = torch.compile(model)
 epochs = 10
 optimizer = AdamW(model.parameters(), 3e-4, weight_decay=0.01) #type:ignore
 total_steps = epochs * len(train_loader)
