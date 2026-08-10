@@ -102,7 +102,7 @@ class TranslationDataset(Dataset):
     Pytorch dataset for the AI Translator Model.
     """
     
-    def __init__(self, pairs: list[tuple[str,str]], tokenizer: Tokenizer, max_len: int=50) -> None:
+    def __init__(self, pairs: list[tuple[list[int],list[int]]], tokenizer: Tokenizer, max_len: int=50) -> None:
         """
         Initializes the custom TranslationDataset class using torch Dataset class.
         
@@ -137,17 +137,17 @@ class TranslationDataset(Dataset):
         Returns:
             tuple[torch.LongTensor, torch.LongTensor]
         """
-        src_sentence, tgt_sentence = self.pairs[index]
-        src_ids = self.tokenizer.encode(src_sentence)
-        tgt_ids = [self.tokenizer.sos_id] + self.tokenizer.encode(tgt_sentence) + [self.tokenizer.eos_id]
-        if len(src_ids) < self.max_len:
-            src_ids.extend([self.tokenizer.pad_id] * (self.max_len - len(src_ids)))
+        src_id, tgt_id_raw = self.pairs[index]
+        src_id = list(src_id)
+        tgt_id = [self.tokenizer.sos_id] + list(tgt_id_raw) + [self.tokenizer.eos_id]
+        if len(src_id) < self.max_len:
+            src_id.extend([self.tokenizer.pad_id] * (self.max_len - len(src_id)))
         else:
-            src_ids = src_ids[:self.max_len]
-        if len(tgt_ids) < self.max_len:
-            tgt_ids.extend([self.tokenizer.pad_id] * (self.max_len - len(tgt_ids)))
+            src_id = src_id[:self.max_len]
+        if len(tgt_id) < self.max_len:
+            tgt_id.extend([self.tokenizer.pad_id] * (self.max_len - len(tgt_id)))
         else:
-            tgt_ids = tgt_ids[:self.max_len]
+            tgt_ids = tgt_id[:self.max_len]
             
-        return (torch.LongTensor(src_ids), torch.LongTensor(tgt_ids))
+        return (torch.LongTensor(src_id), torch.LongTensor(tgt_id))
         
