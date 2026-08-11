@@ -1,2 +1,7 @@
 venv/
 data/
+wandb/
+__pycache__/
+logs/
+trained_models/
+**/.DS_Store
