@@ -61,11 +61,11 @@ def train(model: Transformer, dataloader: DataLoader, optimizer: AdamW, schedule
                 print(msg)
                 logging.info(msg)
         if (epoch+1) % 2 == 0:
-            save_checkpoint(model, optimizer, epoch+1, total_loss/len(dataloader), f'./models/{epoch+1}.pt')
+            save_checkpoint(model, optimizer, epoch+1, total_loss/len(dataloader), f'./trained_models/{epoch+1}.pt')
         msg = f"Epoch {epoch+1}/{epochs}: Loss: {total_loss/len(dataloader):.4f}"
         wandb.log({"epoch_loss": total_loss/len(dataloader), "epoch": epoch+1})
         print(msg)
         logging.info(msg)
         
-    torch.save(model.state_dict(), './models/final_model.pt')
+    torch.save(model.state_dict(), './trained_models/final_model.pt')
     

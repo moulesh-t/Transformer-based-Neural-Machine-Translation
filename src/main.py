@@ -17,7 +17,7 @@ device = torch.device(
 df = pd.read_csv('./data/dataset_clean.tsv', sep='\t')
 df = df[['english', 'german']].dropna()
 pairs = list(zip(df['english'], df['german']))
-pairs = pairs[:10000]
+# pairs = pairs[:10000]
 tokenizer = Tokenizer('./data/tokenizer.model')
 vocab_size = tokenizer.vocab_size()
 encoded_pairs = [(tokenizer.encode(en), tokenizer.encode(de)) for en, de in pairs]
@@ -25,20 +25,20 @@ dataset = TranslationDataset(encoded_pairs, tokenizer, 50)
 train_size = int(0.9 * len(dataset))
 val_size = len(dataset) - train_size
 train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-train_loader = DataLoader(train_dataset, 32, True, num_workers=0)
-val_loader = DataLoader(val_dataset, 32, num_workers=0)
+train_loader = DataLoader(train_dataset, 128, True, num_workers=0)
+val_loader = DataLoader(val_dataset, 128, num_workers=0)
 model = Transformer(
                 vocab_size,
                 vocab_size,
                 256,
                 8,
-                3,
-                512,
+                4,
+                1024,
                 50,
-                0.15
+                0.1
                 )
 model = torch.compile(model)
-epochs = 10
+epochs = 20
 optimizer = AdamW(model.parameters(), 3e-4, weight_decay=0.01) #type:ignore
 total_steps = epochs * len(train_loader)
 warmup_steps = total_steps // 10
